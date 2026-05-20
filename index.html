@@ -18,6 +18,7 @@
   .upload-zone input { display: none; }
   .upload-zone p { color: rgba(255,255,255,0.6); font-size: 0.95rem; margin-top: 8px; }
   video { width: 100%; border-radius: 10px; margin-top: 12px; background: black; max-height: 280px; }
+  audio { width: 100%; margin-top: 10px; border-radius: 8px; }
   .row { display: flex; gap: 10px; margin-bottom: 12px; }
   .field { flex: 1; }
   .field label { font-size: 0.82rem; color: rgba(255,255,255,0.6); display: block; margin-bottom: 5px; }
@@ -28,6 +29,7 @@
   .btn-yellow { background: linear-gradient(135deg, #f39c12, #e67e22); color: white; }
   .btn-green  { background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; }
   .btn-blue   { background: linear-gradient(135deg, #1a5276, #2980b9); color: white; }
+  .btn-purple { background: linear-gradient(135deg, #6c3483, #9b59b6); color: white; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .progress-wrap { background: rgba(255,255,255,0.1); border-radius: 20px; height: 10px; margin: 10px 0; overflow: hidden; }
   .progress-fill { height: 10px; border-radius: 20px; background: linear-gradient(90deg,#f39c12,#e67e22); width: 0%; transition: width 0.3s; }
@@ -38,17 +40,24 @@
   .result-video { width: 100%; border-radius: 10px; background: black; max-height: 280px; margin-bottom: 12px; }
   .download-btn { display: block; width: 100%; padding: 14px; background: linear-gradient(135deg,#27ae60,#2ecc71); color: white; font-size: 1rem; font-weight: 800; border-radius: 12px; text-align: center; text-decoration: none; margin-bottom: 8px; }
   .step-num { display: inline-block; background: #f39c12; color: #1a1a2e; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; font-weight: 900; font-size: 0.85rem; margin-right: 6px; }
+  .vol-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .vol-row label { font-size: 0.88rem; color: rgba(255,255,255,0.7); white-space: nowrap; min-width: 110px; }
+  .vol-row input[type=range] { flex: 1; accent-color: #f39c12; }
+  .vol-val { min-width: 36px; text-align: right; font-size: 0.88rem; color: #f39c12; font-weight: 700; }
+  .music-hint { background: rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; color: rgba(255,255,255,0.55); margin-top: 8px; line-height: 1.5; }
+  .skip-link { text-align: center; margin-top: 4px; }
+  .skip-link a { color: rgba(255,255,255,0.4); font-size: 0.82rem; cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
 <div class="header">
   <h1>✂️ Video Cutter & Looper</h1>
-  <p>Trim a clip · Set loops · Download</p>
+  <p>Trim · Loop · Add Music · Download</p>
 </div>
 
 <div class="main">
 
-  <!-- STEP 1: Upload -->
+  <!-- STEP 1: Upload Video -->
   <div class="card">
     <h2><span class="step-num">1</span> Upload Your Video</h2>
     <div class="upload-zone" onclick="document.getElementById('fileIn').click()">
@@ -74,7 +83,7 @@
         <input type="number" id="endTime" value="2" min="0" step="0.1" placeholder="2.0">
       </div>
     </div>
-    <div class="time-hint">💡 Tap the video above and pause at your start/end point to read the time</div>
+    <div class="time-hint">💡 Play the video above, pause at your start/end point, and read the time shown</div>
     <button class="btn btn-yellow" id="cutBtn" onclick="doCut()">✂️ Cut Clip</button>
     <div class="progress-wrap" id="cutProg" style="display:none"><div class="progress-fill" id="cutFill"></div></div>
     <div class="status" id="cutStatus"></div>
@@ -94,22 +103,53 @@
     <div class="status" id="loopStatus"></div>
   </div>
 
-  <!-- STEP 4: Download -->
+  <!-- STEP 4: Add Music -->
+  <div class="card" id="musicCard" style="display:none">
+    <h2><span class="step-num">4</span> Add Music <span style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-weight:400">(optional)</span></h2>
+    <div class="upload-zone" onclick="document.getElementById('musicIn').click()">
+      <div style="font-size:2rem">🎵</div>
+      <p>Tap to choose a music file</p>
+      <p style="font-size:0.78rem;margin-top:4px">MP3, WAV, AAC, OGG supported</p>
+      <input type="file" id="musicIn" accept="audio/*" onchange="loadMusic(this)">
+    </div>
+    <audio id="musicPreview" controls style="display:none"></audio>
+    <div id="musicLoaded" style="display:none">
+      <div style="margin-top:14px">
+        <div class="vol-row">
+          <label>🎵 Music Volume</label>
+          <input type="range" id="volMusic" min="0" max="100" value="80" oninput="document.getElementById('volMusicVal').textContent=this.value+'%'">
+          <span class="vol-val" id="volMusicVal">80%</span>
+        </div>
+        <div class="vol-row">
+          <label>🎬 Video Volume</label>
+          <input type="range" id="volVideo" min="0" max="100" value="30" oninput="document.getElementById('volVideoVal').textContent=this.value+'%'">
+          <span class="vol-val" id="volVideoVal">30%</span>
+        </div>
+      </div>
+      <div class="music-hint">💡 The music will start at the beginning of the song and be trimmed to match your video length. Pick a song where the beat hits early — right at the start — so it syncs with the action!</div>
+      <button class="btn btn-purple" id="mixBtn" onclick="doMix()" style="margin-top:12px">🎵 Mix Music + Video</button>
+      <div class="progress-wrap" id="mixProg" style="display:none"><div class="progress-fill" id="mixFill"></div></div>
+      <div class="status" id="mixStatus"></div>
+    </div>
+    <div class="skip-link"><a onclick="showDownload(loopedBlob, false)">Skip — no music, just download the looped video</a></div>
+  </div>
+
+  <!-- STEP 5: Download -->
   <div class="card" id="downloadCard" style="display:none">
-    <h2><span class="step-num">4</span> Your Looped Video</h2>
+    <h2><span class="step-num">5</span> Your Final Video</h2>
     <video id="finalVid" controls class="result-video"></video>
-    <a id="downloadLink" class="download-btn" download="looped-video.mp4">⬇️ Download Video</a>
+    <a id="downloadLink" class="download-btn" download="final-video.mp4">⬇️ Download Video</a>
     <button class="btn btn-blue" onclick="startOver()">🔄 Start Over</button>
   </div>
 
 </div>
 
-<!-- Load FFmpeg -->
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
 <script>
 var originalFile = null;
 var cutBlob = null;
-var ffmpegLoaded = false;
+var loopedBlob = null;
+var musicFile = null;
 var ffmpegInstance = null;
 
 async function getFFmpeg() {
@@ -117,9 +157,10 @@ async function getFFmpeg() {
   const { FFmpeg } = FFmpegWASM;
   ffmpegInstance = new FFmpeg();
   ffmpegInstance.on('progress', function(p) {
-    var pct = Math.round(p.progress * 100);
-    document.getElementById('cutFill').style.width = pct + '%';
-    document.getElementById('loopFill').style.width = pct + '%';
+    var pct = Math.min(Math.round(p.progress * 100), 100);
+    ['cutFill','loopFill','mixFill'].forEach(function(id){
+      document.getElementById(id).style.width = pct + '%';
+    });
   });
   await ffmpegInstance.load({
     coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.js',
@@ -144,42 +185,42 @@ function loadVideo(input) {
   };
 }
 
+function loadMusic(input) {
+  var file = input.files[0];
+  if (!file) return;
+  musicFile = file;
+  var url = URL.createObjectURL(file);
+  var aud = document.getElementById('musicPreview');
+  aud.src = url;
+  aud.style.display = 'block';
+  document.getElementById('musicLoaded').style.display = 'block';
+}
+
 async function doCut() {
   var start = parseFloat(document.getElementById('startTime').value);
   var end   = parseFloat(document.getElementById('endTime').value);
   if (isNaN(start) || isNaN(end) || end <= start) {
-    document.getElementById('cutStatus').textContent = '❌ End time must be greater than start time.';
-    return;
+    document.getElementById('cutStatus').textContent = '❌ End time must be greater than start time.'; return;
   }
   var duration = end - start;
   document.getElementById('cutBtn').disabled = true;
   document.getElementById('cutStatus').textContent = '⏳ Loading FFmpeg...';
   document.getElementById('cutProg').style.display = 'block';
   document.getElementById('cutFill').style.width = '0%';
-
   try {
     var ff = await getFFmpeg();
     document.getElementById('cutStatus').textContent = '✂️ Cutting clip...';
-
     var { fetchFile } = FFmpegWASM;
     await ff.writeFile('input.mp4', await fetchFile(originalFile));
-    await ff.exec([
-      '-ss', start.toString(),
-      '-i', 'input.mp4',
-      '-t', duration.toString(),
-      '-c', 'copy',
-      'cut.mp4'
-    ]);
-
+    await ff.exec(['-ss', start.toString(), '-i', 'input.mp4', '-t', duration.toString(), '-c', 'copy', 'cut.mp4']);
     var data = await ff.readFile('cut.mp4');
     cutBlob = new Blob([data.buffer], { type: 'video/mp4' });
-    var cutUrl = URL.createObjectURL(cutBlob);
-
-    document.getElementById('cutVid').src = cutUrl;
+    document.getElementById('cutVid').src = URL.createObjectURL(cutBlob);
     document.getElementById('loopCard').style.display = 'block';
     document.getElementById('cutStatus').textContent = '✅ Clip cut! (' + duration.toFixed(2) + 's)';
     document.getElementById('cutFill').style.width = '100%';
     document.getElementById('cutBtn').disabled = false;
+    window.scrollTo({ top: document.getElementById('loopCard').offsetTop - 20, behavior: 'smooth' });
   } catch(e) {
     document.getElementById('cutStatus').textContent = '❌ Error: ' + e.message;
     document.getElementById('cutBtn').disabled = false;
@@ -188,65 +229,103 @@ async function doCut() {
 
 async function doLoop() {
   var loops = parseInt(document.getElementById('loopCount').value);
-  if (!loops || loops < 1) { document.getElementById('loopStatus').textContent = '❌ Enter a valid number of loops.'; return; }
+  if (!loops || loops < 1) { document.getElementById('loopStatus').textContent = '❌ Enter a valid number.'; return; }
   document.getElementById('loopBtn').disabled = true;
-  document.getElementById('loopStatus').textContent = '⏳ Creating looped video...';
+  document.getElementById('loopStatus').textContent = '⏳ Stitching ' + loops + ' copies...';
   document.getElementById('loopProg').style.display = 'block';
   document.getElementById('loopFill').style.width = '0%';
-
   try {
     var ff = await getFFmpeg();
     var { fetchFile } = FFmpegWASM;
-
-    // Write cut clip
     await ff.writeFile('clip.mp4', await fetchFile(cutBlob));
-
-    // Build concat list
     var concatContent = '';
-    for (var i = 0; i < loops; i++) { concatContent += 'file clip.mp4\n'; }
+    for (var i = 0; i < loops; i++) concatContent += 'file clip.mp4\n';
     await ff.writeFile('list.txt', concatContent);
-
-    document.getElementById('loopStatus').textContent = '🔁 Stitching ' + loops + ' copies...';
-
-    await ff.exec([
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', 'list.txt',
-      '-c', 'copy',
-      'looped.mp4'
-    ]);
-
+    await ff.exec(['-f','concat','-safe','0','-i','list.txt','-c','copy','looped.mp4']);
     var data = await ff.readFile('looped.mp4');
-    var blob = new Blob([data.buffer], { type: 'video/mp4' });
-    var url = URL.createObjectURL(blob);
-
-    document.getElementById('finalVid').src = url;
-    document.getElementById('downloadLink').href = url;
-    document.getElementById('downloadCard').style.display = 'block';
+    loopedBlob = new Blob([data.buffer], { type: 'video/mp4' });
     document.getElementById('loopStatus').textContent = '✅ Done! ' + loops + ' loops ready.';
     document.getElementById('loopFill').style.width = '100%';
     document.getElementById('loopBtn').disabled = false;
+    document.getElementById('musicCard').style.display = 'block';
+    window.scrollTo({ top: document.getElementById('musicCard').offsetTop - 20, behavior: 'smooth' });
   } catch(e) {
     document.getElementById('loopStatus').textContent = '❌ Error: ' + e.message;
     document.getElementById('loopBtn').disabled = false;
   }
 }
 
+async function doMix() {
+  if (!musicFile) { document.getElementById('mixStatus').textContent = '❌ Please upload a music file first.'; return; }
+  var volM = parseInt(document.getElementById('volMusic').value) / 100;
+  var volV = parseInt(document.getElementById('volVideo').value) / 100;
+  document.getElementById('mixBtn').disabled = true;
+  document.getElementById('mixStatus').textContent = '⏳ Mixing music and video...';
+  document.getElementById('mixProg').style.display = 'block';
+  document.getElementById('mixFill').style.width = '0%';
+  try {
+    var ff = await getFFmpeg();
+    var { fetchFile } = FFmpegWASM;
+    await ff.writeFile('looped.mp4', await fetchFile(loopedBlob));
+    await ff.writeFile('music.mp3', await fetchFile(musicFile));
+
+    // Get video duration from the looped blob using a temp video element
+    var vidDur = await getVideoDuration(loopedBlob);
+
+    await ff.exec([
+      '-i', 'looped.mp4',
+      '-i', 'music.mp3',
+      '-filter_complex',
+      '[0:a]volume=' + volV + '[va];[1:a]volume=' + volM + '[ma];[va][ma]amix=inputs=2:duration=first[aout]',
+      '-map', '0:v',
+      '-map', '[aout]',
+      '-t', vidDur.toString(),
+      '-c:v', 'copy',
+      '-c:a', 'aac',
+      '-shortest',
+      'final.mp4'
+    ]);
+
+    var data = await ff.readFile('final.mp4');
+    var finalBlob = new Blob([data.buffer], { type: 'video/mp4' });
+    showDownload(finalBlob, true);
+    document.getElementById('mixStatus').textContent = '✅ Music mixed in! Ready to download.';
+    document.getElementById('mixFill').style.width = '100%';
+    document.getElementById('mixBtn').disabled = false;
+  } catch(e) {
+    document.getElementById('mixStatus').textContent = '❌ Error: ' + e.message;
+    document.getElementById('mixBtn').disabled = false;
+  }
+}
+
+function getVideoDuration(blob) {
+  return new Promise(function(resolve) {
+    var v = document.createElement('video');
+    v.src = URL.createObjectURL(blob);
+    v.onloadedmetadata = function() { resolve(v.duration); };
+  });
+}
+
+function showDownload(blob, hasMusicLabel) {
+  var url = URL.createObjectURL(blob);
+  document.getElementById('finalVid').src = url;
+  var dl = document.getElementById('downloadLink');
+  dl.href = url;
+  dl.download = hasMusicLabel ? 'final-with-music.mp4' : 'looped-video.mp4';
+  dl.textContent = hasMusicLabel ? '⬇️ Download Video with Music' : '⬇️ Download Looped Video';
+  document.getElementById('downloadCard').style.display = 'block';
+  window.scrollTo({ top: document.getElementById('downloadCard').offsetTop - 20, behavior: 'smooth' });
+}
+
 function startOver() {
-  originalFile = null; cutBlob = null;
-  document.getElementById('fileIn').value = '';
-  document.getElementById('previewVid').src = '';
-  document.getElementById('previewVid').style.display = 'none';
-  document.getElementById('vidInfo').textContent = '';
-  document.getElementById('cutStatus').textContent = '';
-  document.getElementById('loopStatus').textContent = '';
-  document.getElementById('trimCard').style.display = 'none';
-  document.getElementById('loopCard').style.display = 'none';
-  document.getElementById('downloadCard').style.display = 'none';
-  document.getElementById('cutProg').style.display = 'none';
-  document.getElementById('loopProg').style.display = 'none';
-  document.getElementById('cutBtn').disabled = false;
-  document.getElementById('loopBtn').disabled = false;
+  originalFile=null; cutBlob=null; loopedBlob=null; musicFile=null;
+  ['fileIn','musicIn'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['previewVid','musicPreview'].forEach(function(id){ var el=document.getElementById(id); el.src=''; el.style.display='none'; });
+  ['vidInfo','cutStatus','loopStatus','mixStatus'].forEach(function(id){ document.getElementById(id).textContent=''; });
+  ['trimCard','loopCard','musicCard','downloadCard','musicLoaded'].forEach(function(id){ document.getElementById(id).style.display='none'; });
+  ['cutProg','loopProg','mixProg'].forEach(function(id){ document.getElementById(id).style.display='none'; });
+  ['cutBtn','loopBtn','mixBtn'].forEach(function(id){ document.getElementById(id).disabled=false; });
+  window.scrollTo(0,0);
 }
 </script>
 </body>
